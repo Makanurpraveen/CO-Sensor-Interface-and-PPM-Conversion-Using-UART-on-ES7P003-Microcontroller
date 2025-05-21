@@ -1,0 +1,150 @@
+/*
+@file		main.c
+@brief		main source file
+@versoin	1.0.0
+@author		Praveen V Makanur,Nithin GS
+@Verified	Venkatesh G n
+@date		2024-05-15
+*/
+
+
+
+/*sample.c*/
+#include <hic.h>
+
+long  ReadADC(void);
+long value;
+unsigned int COppm;
+unsigned char star[] ="CO in PPM:-";
+unsigned char ppmStr[5],valLen;
+unsigned char newLine[] ="\n";
+
+
+unsigned int calCO(long adcValue)
+{
+   long locVar = 0;
+
+   locVar = ((adcValue) * 29.80);
+   return((locVar*0.00000001)/0.000540);
+}
+
+/******************************************************
+Function Name: void init_UART(void)
+Description: Initializes PAT1&2 as an output and input respectively
+Input: ADC value
+Output: UART data packet
+Return Value: None
+*******************************************************/
+void init_UART(void)
+{
+    PAT1 = 0;       // TX output
+    PAT2 = 1;       // RX input
+    TXM = 0;        // 8-bit data transmission format
+    BRGH = 0;       // Low-speed baud rate mode: Baud rate = Fosc/(64*(BRR<7:0>+1))
+    BRR = 25;       // Baud rate = 16MHz/(64*26) ? 9600bps
+    TXEN = 1;       // Enable transmission
+}
+
+
+/**********************************************
+Function Name: UART_send(uchar *str, uchar ch, uint value)
+Description: UART transmission function
+Input: String pointer, channel number, ADC conversion value
+Output: None
+Return Value: None
+**********************************************/
+void UART_send(unsigned char *str, unsigned char length)
+{
+   unsigned char idx = 0;
+   for(; idx < length; idx++)
+   { 
+        while(!TRMT);
+        TXB = *str++;
+   }
+}
+
+void UART_rsend(unsigned char *str, unsigned char length)
+{
+   unsigned char idx = 0;
+   for(; idx < length; idx++)
+   { 
+        while(!TRMT);
+        TXB = *str--;
+   }
+}
+/**
+* @brief 		decimal value to string conversion
+* @param[in]	i16data decimal value
+* @param[in]	*buff converted decimal value into string  
+* @param[in]	sensor_type type of the sensor data is converting
+* @note			none
+*/
+unsigned char dec_to_string(unsigned int i16data,unsigned char *buff)
+{
+	unsigned char len = 0;
+	/* untill decimal value is zero */
+	while(i16data)
+	{
+		*buff=(i16data%10)+0x30;
+		i16data /= 10;
+		buff++;
+		len++;
+	}
+	return len;
+}
+
+
+
+void main() 
+{
+	PAT6=0;
+	PAT4=0;
+	init_UART();
+	
+	while(1)
+	{
+		value = ReadADC();
+	    COppm = calCO(value);
+		//valLen = dec_to_string(COppm,ppmStr);
+		ppmStr[0] = COppm >> 0x08 & 0xFF;
+		ppmStr[1] = COppm & 0xFF;
+		UART_send(ppmStr,2);
+		//UART_send(star,11);
+		////UART_send(ppmStr,valLen);
+		//UART_rsend(ppmStr[valLen-1],valLen);
+		//UART_send(newLine,1);
+	}
+}
+
+
+
+/* reading the ADC count values */
+long  ReadADC(void)
+{
+	static long  Count = 0;
+	unsigned int i;
+	PA6=1;
+	PAT6=1;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+	PA4=0;
+	Count=0;
+	while(PA6);
+	for(i=0; i<24; i++)
+	{
+		PA4=1;
+		Count=Count<<1;
+		PA4=0;
+		if(PA6)
+		{
+			Count++;
+		}
+	}
+	PA4=1;
+	//Count=Count^0X800000;
+	PA4=0;
+	return(Count);
+}
+
+
+
+
+	
